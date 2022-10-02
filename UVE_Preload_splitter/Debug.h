@@ -5,8 +5,8 @@
 //#define DEBUG_PRINT_ATLAS_ENTRY 1
 
 #ifdef DEBUG_ENABLE
-#define DEBUG_PAUSE { printf_s("DEBUG PAUSE, PRESS ENTER\n"); char dbp = 0; dbp = getchar(); }
-#define DEBUG_PAUSE_EXIT { printf_s("DEBUG PAUSE, PRESS ENTER\n"); char dbp = 0; dbp = getchar(); exit(0); }
+#define DEBUG_PAUSE { printf_s("Debug pause, press Enter...\n"); char dbp = 0; dbp = getchar(); }
+#define DEBUG_PAUSE_EXIT { printf_s("Debug pause, press Enter to exit...\n"); char dbp = 0; dbp = getchar(); exit(0); }
 #define DEBUG_PRINTVAL(value, format_type) { printf_s("%s="##format_type"\n", #value, value); }
 #else
 #define DEBUG_PAUSE ;
