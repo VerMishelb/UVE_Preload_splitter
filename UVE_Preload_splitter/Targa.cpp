@@ -151,6 +151,27 @@ void Targa::BlitRegion(const std::vector<PixelData>& _data, int x, int y, int w,
 	}
 }
 
+void Targa::BlitRegionTransparent(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top, uint8_t a_) {
+	int
+		x_from = x,
+		x_to = x_from + w,//+1
+		y_from = bottom_to_top ? y : this->h - y - 1,
+		y_to = bottom_to_top ? y_from + h : y_from - h;//+-1
+
+	for (int _y = y_from; _y != y_to; (bottom_to_top ? ++_y : --_y)) {
+		for (int _x = x_from; _x < x_to; ++_x) {
+			if (!PixelIsTransparent(_data[(_x - x_from) + std::abs(_y - y_from) * w]))
+			SetPixel(_x, _y, 
+				{ 
+					(a_ == -1) ? _data[(_x - x_from) + std::abs(_y - y_from) * w].a : a_,
+					_data[(_x - x_from) + std::abs(_y - y_from) * w].r,
+					_data[(_x - x_from) + std::abs(_y - y_from) * w].g,
+					_data[(_x - x_from) + std::abs(_y - y_from) * w].b,
+				}, true);
+		}
+	}
+}
+
 bool Targa::PixelIsTransparent(const PixelData& px, bool alpha_only) {
 	switch (colour_depth) {
 	case 32:

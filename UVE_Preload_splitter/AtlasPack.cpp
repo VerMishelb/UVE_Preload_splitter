@@ -4,9 +4,9 @@
 #include "IniPreload.h"
 #include "Debug.h"
 
-Atlas::Atlas() : pixel_padding_(2), use_power_of_two_(1) {}
+Atlas::Atlas() : pixel_padding_(0), use_power_of_two_(1), colour_padding_(2) {}
 
-void Atlas::SetPadding(unsigned int _padding) {
+void Atlas::SetPadding(int _padding) {
 	pixel_padding_ = _padding;
 }
 
@@ -14,7 +14,11 @@ void Atlas::SetPowerOfTwo(bool pot) {
 	use_power_of_two_ = pot;
 }
 
-int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& images, int frames_amount, int loop_mode, int preload_version) {
+void Atlas::SetColourPadding(int _margin) {
+	colour_padding_ = _margin;
+}
+
+int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& images, int frames_amount, int loop_mode, int preload_version, bool force_greyscale) {
 	if (images.empty()) { return -1; }
 	Targa image{};
 	IniPreload preload{};
@@ -33,6 +37,11 @@ int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& ima
 	TargaHeader tga_header = images[0].image.GetHeader();
 	tga_header.w = size_.x;
 	tga_header.h = size_.y;
+	if (force_greyscale) {
+		tga_header.image_descriptor = 8;
+		tga_header.colour_depth = 8;
+		tga_header.image_type = 3;//Uncompressed greyscale
+	}
 	image.SetHeader(tga_header);
 
 	DEBUG_PRINTVAL(size_.x, "%i");
@@ -44,11 +53,44 @@ int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& ima
 		DEBUG_PRINTVAL(images[i].rect.y, "%i");
 		DEBUG_PRINTVAL(images[i].rect.w, "%i");
 		DEBUG_PRINTVAL(images[i].rect.h, "%i");
-		image.BlitRegion(
+
+		//Make fun of colour bleeding
+		if (image.GetHeader().colour_depth == 32) {
+			for (int i2 = colour_padding_; i2 > 0; --i2) {
+				//Up
+				image.BlitRegionTransparent(
+					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
+					images[i].rect.x, images[i].rect.y - i2, images[i].rect.w, images[i].rect.h,
+					preload.IsFlipped(), 127
+				);
+				//Down
+				image.BlitRegionTransparent(
+					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
+					images[i].rect.x, images[i].rect.y + i2, images[i].rect.w, images[i].rect.h,
+					preload.IsFlipped(), 127
+				);
+				//Left
+				image.BlitRegionTransparent(
+					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
+					images[i].rect.x - i2, images[i].rect.y, images[i].rect.w, images[i].rect.h,
+					preload.IsFlipped(), 127
+				);
+				//Right
+				image.BlitRegionTransparent(
+					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
+					images[i].rect.x + i2, images[i].rect.y, images[i].rect.w, images[i].rect.h,
+					preload.IsFlipped(), 127
+				);
+			}
+		}
+
+		//Draw an actual image
+		image.BlitRegionTransparent(
 			images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
 			images[i].rect.x, images[i].rect.y, images[i].rect.w, images[i].rect.h,
 			preload.IsFlipped()
 		);
+
 		PreloadFrameData frame{ 0 };
 		frame.x = images[i].rect.x;
 		frame.y = images[i].rect.y;
@@ -130,11 +172,18 @@ int Atlas::CreateAtlas(std::vector<AtlasEntry>& images) {
 }
 
 void Atlas::GetSizes(const std::vector<AtlasEntry>& images, std::vector<Vector2>& sizes) {
+	int total_padding = 0;
+	if (images[0].image.colour_depth == 32) {
+		total_padding = pixel_padding_ + colour_padding_ * 2;
+	}
+	else {
+		total_padding = pixel_padding_ + colour_padding_;
+	}
 	sizes.clear();
 	for (int i = 0; i < images.size(); ++i) {
 		images_area += 
-			(images[i].rect.w + pixel_padding_) * 
-			(images[i].rect.h + pixel_padding_);
+			(images[i].rect.w + total_padding) *
+			(images[i].rect.h + total_padding);
 	}
 
 	//1-512, 508*2, 508*3...
@@ -145,12 +194,12 @@ void Atlas::GetSizes(const std::vector<AtlasEntry>& images, std::vector<Vector2>
 	int no_power_of_two_add_px = 8;
 
 	for (int i = 0; i < images.size(); ++i) {
-		if (images[i].rect.w + pixel_padding_ * 2 > min_w) {
-			min_w = images[i].rect.w + pixel_padding_ * 2;
+		if (images[i].rect.w + total_padding * 2 > min_w) {
+			min_w = images[i].rect.w + total_padding * 2;
 		}
-		max_h += images[i].rect.h + pixel_padding_ * 2;
-		if (images[i].rect.h + pixel_padding_ * 2 > min_h) {
-			min_h = images[i].rect.h + pixel_padding_ * 2;
+		max_h += images[i].rect.h + total_padding * 2;
+		if (images[i].rect.h + total_padding * 2 > min_h) {
+			min_h = images[i].rect.h + total_padding * 2;
 		}
 	}
 
@@ -245,13 +294,15 @@ bool Atlas::PackAtlas(std::vector<AtlasEntry>& images, Vector2 size,
 	//Start with the whole atlas being available
 	DEBUG_PRINTVAL(size.x, "%i (PackAtlas)");
 	DEBUG_PRINTVAL(size.y, "%i");
+
+	int total_padding = pixel_padding_ + colour_padding_;
 	
 	free_rects_.clear();
 	free_rects_.push_back({
-		pixel_padding_,
-		pixel_padding_,
-		size.x - pixel_padding_ - pixel_padding_,
-		size.y - pixel_padding_ - pixel_padding_
+		total_padding,
+		total_padding,
+		size.x - total_padding * 2,
+		size.y - total_padding * 2
 		});
 
 	for (int image = 0; image < images.size(); ++image) {
@@ -342,33 +393,34 @@ bool Atlas::IntersectsRect(const Rect& new_rect, const Rect& free_rect) {
 
 //Updates the free rects after pushing another image to an existing one.
 void Atlas::PushSplitRects(const Rect& new_rect, const Rect free_rect) {
+	int total_padding = pixel_padding_ + colour_padding_*2;
 	//Top
 	if (new_rect.y > free_rect.y) {
 		Rect temp = free_rect;
-		temp.h = new_rect.y - free_rect.y - pixel_padding_;
+		temp.h = new_rect.y - free_rect.y - total_padding;
 		free_rects_.push_back(temp);
 	}
 
 	//Bottom
 	if (free_rect.y + free_rect.h > new_rect.y + new_rect.h) {
 		Rect temp = free_rect;
-		temp.y = new_rect.y + new_rect.h + pixel_padding_;
-		temp.h = free_rect.y + free_rect.h - (new_rect.y + new_rect.h) - pixel_padding_;
+		temp.y = new_rect.y + new_rect.h + total_padding;
+		temp.h = free_rect.y + free_rect.h - (new_rect.y + new_rect.h) - total_padding;
 		free_rects_.push_back(temp);
 	}
 
 	//Left
 	if (new_rect.x > free_rect.x) {
 		Rect temp = free_rect;
-		temp.w = new_rect.x - free_rect.x - pixel_padding_;
+		temp.w = new_rect.x - free_rect.x - total_padding;
 		free_rects_.push_back(temp);
 	}
 
 	//Right
 	if (free_rect.x + free_rect.w > new_rect.x + new_rect.w) {
 		Rect temp = free_rect;
-		temp.x = new_rect.x + new_rect.w + pixel_padding_;
-		temp.w = free_rect.x + free_rect.w - (new_rect.x + new_rect.w) - pixel_padding_;
+		temp.x = new_rect.x + new_rect.w + total_padding;
+		temp.w = free_rect.x + free_rect.w - (new_rect.x + new_rect.w) - total_padding;
 		free_rects_.push_back(temp);
 	}
 }

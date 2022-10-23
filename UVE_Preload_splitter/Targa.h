@@ -36,6 +36,7 @@ public:
 	//The resulting region is always upside down for consistence
 	std::vector<PixelData> GetRegion(int x, int y, int w, int h, bool bottom_to_top = true) const;
 	void BlitRegion(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top = true);
+	void BlitRegionTransparent(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top = true, uint8_t a_ = -1);//Do not place pixel if it's transparent
 	bool PixelIsTransparent(const PixelData& px, bool check_alpha_only = true);
 
 	std::vector<unsigned char> data{};
