@@ -51,15 +51,17 @@ public:
 	std::vector<int> GetSortedIndices(const std::vector<AtlasEntry>& images);
 	bool PackAtlas(std::vector<AtlasEntry>& images, Vector2 size,
 		const std::vector<int>& sorted_ids);
-	void SetPadding(unsigned int _padding);
+	void SetPadding(int _padding);
 	void SetPowerOfTwo(bool pot);
-	int SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& images, int frames_amount, int loop_mode, int preload_version);
+	int SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& images, int frames_amount, int loop_mode, int preload_version, bool force_greyscale = false);
+	void SetColourPadding(int _margin);
 
 	Vector2 size_{ 1,1 };
 	std::vector<Vector2> sizes_{};
 	std::vector<int> sorted_ids_{};
 	unsigned int images_area{ 0 };
 	int pixel_padding_;
+	int colour_padding_;
 
 private:
 	bool IntersectsRect(const Rect& new_rect, const Rect& free_rect);

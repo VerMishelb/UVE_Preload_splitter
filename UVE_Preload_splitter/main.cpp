@@ -6,8 +6,8 @@
 #include "Debug.h"
 
 /* Don't put 0 in the beginning. */
-#define VERSION 2'00'01'02
-#define VERSION_STR "2.0.1.2"
+#define VERSION 2'00'01'03
+#define VERSION_STR "2.0.1.3"
 #define ERRMSG_NOT_ENOUGH_ARGS(x) "Incorrect " x " usage: not enough arguments.\nRun without parameters to see usage examples.\n"
 #define ERRMSG_FILE(x) "An error occurred when trying to read/write " << x << ".\n"
 #define HALF(x) ((float)(x)/2.f+1.f)
@@ -27,6 +27,10 @@ TODO
   where the error occurred.
 - Proper exe name arguments system.
 - Rework pack entries to support them independantly
+
+2.0.1.3
+- Added a colour bleeding padding option. See "--colour-padding".
+- Added --greyscale option to convert 32 bit frames to 8 bit atlas.
 
 2.0.1.2
 - Fixed an issue where free rect reference became outdated after pushing back at least one new rect.
@@ -89,9 +93,11 @@ int gDefaultFlag = EntryFlags::ENTRYFLAG_EXPORT;
 int gExportOptions = ExportFlags::EXPORTFLAG_SPRSHEET_NONE;
 int gPackLoop = PackFlags::PACKFLAG_REPEAT_LAST_FRAME;
 int gPackFrames = -1;
-int gPackPadding = 2;
+int gPackPadding = 0;
+int gPackColourBleedingPadding = 2;
 bool gPackAlphaTrimmingOnly = true;
 bool gPackPowerOfTwo = true;
+bool gPackGreyscale = false;
 bool gSearchForEntries = false;
 bool gFlipExportedFrames = true;
 bool gExportCentered = false;
@@ -149,11 +155,15 @@ void PrintHelp() {
 		"\tlast - Keep using the last frame given (stop the animation).\n"
 		"\tDefault: last\n\n"
 
-		"--padding [number] - Separate frames in the atlas by [number] transparent pixels to avoid colour bleeding. 2 by default. If <0, sets to 0.\n\n"
+		"--padding [number] - Separate frames in the atlas by [number] transparent pixels to avoid colour bleeding. 0 by default (uses --colour-margin instead). If <0, sets to 0.\n\n"
 
 		"--power-of-two [1|0] - If enabled, the resulting atlas has 2^x dimensions. On by default. WARNING! Disabling this will result in a HUGE time increase, it's recommended not to use this option unless it's crucial.\n\n"
 
 		"--use-alpha-trimming [1|0] - If enabled, pixels that are fully transparent but still contain colour data will not be considered. On by default.\n\n"
+
+		"--colour-padding [number] - Add [number] fully transparent but coloured pixels around each frame to avoid colour bleeding. The default value is 2.\n\n"
+
+		"--greyscale - If the input images sequence is saved as TrueColor 32 bpp images (e.g. how Paint.NET always saves), then the images will be converted to grayscale on the fly USING THE RED CHANNEL. Toggleable, off by default.\n\n"
 
 		"Tip: If the executable name has brackets, some arguments can be stated here to be applied automatically.\n"
 		"EXAMPLES (PS.exe is this executable):\n"
@@ -369,6 +379,17 @@ int ParseArgs(std::vector<Entry>& files, int& argc, char**& argv) {
 			else if (!strcmp(argv[i], "--dbg-middle")) {
 				gDebugSizesMiddle = true;
 			}
+			else if (!strcmp(argv[i], "--colour-padding") || !strcmp(argv[i], "--color-padding")) {
+				if (i + 1 >= argc) {
+					printf_s(ERRMSG_NOT_ENOUGH_ARGS("--colour-padding"));
+					return 0;
+				}
+				int value = std::strtol(argv[++i], nullptr, 10);
+				gPackColourBleedingPadding = value;
+			}
+			else if (!strcmp(argv[i], "--greyscale") || !strcmp(argv[i], "--grayscale")) {
+				gPackGreyscale = !gPackGreyscale;
+			}
 
 			else {
 				Entry entry{ 0 };
@@ -484,6 +505,7 @@ int main(int argc, char** argv) {
 
 	Atlas atlas;
 	atlas.SetPadding(gPackPadding);
+	atlas.SetColourPadding(gPackColourBleedingPadding);
 	atlas.SetPowerOfTwo(gPackPowerOfTwo);
 	std::vector<AtlasEntry> atlas_entries{};
 
@@ -732,19 +754,21 @@ int main(int argc, char** argv) {
 				atl_entry.offset.y = 0.f;
 			}
 			else {
-				atl_entry.rect.w = x_useful_max - x_useful_min + 1;
-				atl_entry.rect.h = y_useful_max - y_useful_min + 1;
-				atl_entry.data_start.x = l_bound;
-				atl_entry.data_start.y = t_bound;
-				atl_entry.offset.x = (HALF(atl_entry.rect.w)-1 + l_bound) - middle_point.x;
-				atl_entry.offset.y = (HALF(atl_entry.rect.h)-1 + t_bound) - middle_point.y;
+				atl_entry.rect.w = x_useful_max - x_useful_min + 1;// +gPackColourBleedingPadding * 2;
+				atl_entry.rect.h = y_useful_max - y_useful_min + 1;// +gPackColourBleedingPadding * 2;
+				atl_entry.data_start.x = l_bound;// +gPackColourBleedingPadding;
+				atl_entry.data_start.y = t_bound;// +gPackColourBleedingPadding;
+				atl_entry.offset.x = (HALF(atl_entry.rect.w) - 1 + l_bound) - middle_point.x;// +gPackColourBleedingPadding;
+				atl_entry.offset.y = (HALF(atl_entry.rect.h) - 1 + t_bound) - middle_point.y;// +gPackColourBleedingPadding;
 			}
 
-			printf_s("Atlas entry\nWxH: %dx%d\nOffsets: %.2f, %.2f\n",
+			printf_s("Atlas entry\nWxH: %dx%d\nOffsets: %.2f, %.2f\nColour margin: %d\nMargin: %d\n",
 				atl_entry.rect.w,
 				atl_entry.rect.h,
 				atl_entry.offset.x,
-				atl_entry.offset.y
+				atl_entry.offset.y,
+				gPackColourBleedingPadding,
+				gPackPadding
 				);
 			DEBUG_PRINTVAL(atl_entry.data_start.x, "%d");
 			DEBUG_PRINTVAL(atl_entry.data_start.y, "%d")
@@ -775,7 +799,7 @@ int main(int argc, char** argv) {
 				entries[0].tga.substr(0, entries[0].tga.find_last_of("\\/") + 1).c_str(),
 				entries[0].tga.substr(entries[0].tga.find_last_of("\\/") + 1).c_str()
 			);
-			if (atlas.SaveAtlas(new_path, atlas_entries, gPackFrames, gPackLoop, preload_version) != -1) {
+			if (atlas.SaveAtlas(new_path, atlas_entries, gPackFrames, gPackLoop, preload_version, gPackGreyscale) != -1) {
 				++gCntOk;
 			}
 			else {
