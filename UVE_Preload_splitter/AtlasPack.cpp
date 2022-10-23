@@ -61,25 +61,25 @@ int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& ima
 				image.BlitRegionTransparent(
 					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
 					images[i].rect.x, images[i].rect.y - i2, images[i].rect.w, images[i].rect.h,
-					preload.IsFlipped(), 127
+					preload.IsFlipped()
 				);
 				//Down
 				image.BlitRegionTransparent(
 					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
 					images[i].rect.x, images[i].rect.y + i2, images[i].rect.w, images[i].rect.h,
-					preload.IsFlipped(), 127
+					preload.IsFlipped()
 				);
 				//Left
 				image.BlitRegionTransparent(
 					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
 					images[i].rect.x - i2, images[i].rect.y, images[i].rect.w, images[i].rect.h,
-					preload.IsFlipped(), 127
+					preload.IsFlipped()
 				);
 				//Right
 				image.BlitRegionTransparent(
 					images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
 					images[i].rect.x + i2, images[i].rect.y, images[i].rect.w, images[i].rect.h,
-					preload.IsFlipped(), 127
+					preload.IsFlipped()
 				);
 			}
 		}
