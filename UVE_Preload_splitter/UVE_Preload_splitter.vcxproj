@@ -156,7 +156,11 @@
     <ClInclude Include="AtlasPack.h" />
     <ClInclude Include="Debug.h" />
     <ClInclude Include="IniPreload.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Targa.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="UVE_Preload_splitter.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
