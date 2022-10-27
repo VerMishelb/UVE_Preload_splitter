@@ -163,7 +163,7 @@ void Targa::BlitRegionTransparent(const std::vector<PixelData>& _data, int x, in
 			if (!PixelIsTransparent(_data[(_x - x_from) + std::abs(_y - y_from) * w]))
 			SetPixel(_x, _y, 
 				{ 
-					(a_ == -1) ? _data[(_x - x_from) + std::abs(_y - y_from) * w].a : a_,
+					(a_ == 255) ? _data[(_x - x_from) + std::abs(_y - y_from) * w].a : a_,
 					_data[(_x - x_from) + std::abs(_y - y_from) * w].r,
 					_data[(_x - x_from) + std::abs(_y - y_from) * w].g,
 					_data[(_x - x_from) + std::abs(_y - y_from) * w].b,

@@ -6,8 +6,8 @@
 #include "Debug.h"
 
 /* Don't put 0 in the beginning. */
-#define VERSION 2'00'01'03
-#define VERSION_STR "2.0.1.3"
+#define VERSION 2'00'01'04
+#define VERSION_STR "2.0.1.4"
 #define ERRMSG_NOT_ENOUGH_ARGS(x) "Incorrect " x " usage: not enough arguments.\nRun without parameters to see usage examples.\n"
 #define ERRMSG_FILE(x) "An error occurred when trying to read/write " << x << ".\n"
 #define HALF(x) ((float)(x)/2.f+1.f)
@@ -27,6 +27,9 @@ TODO
   where the error occurred.
 - Proper exe name arguments system.
 - Rework pack entries to support them independantly
+
+2.0.1.4
+- Fixed alpha channel check for tranparent blitting.
 
 2.0.1.3
 - Added a colour bleeding padding option. See "--colour-padding".
