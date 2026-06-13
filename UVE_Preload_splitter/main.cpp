@@ -6,8 +6,8 @@
 #include "Debug.h"
 
 /* Don't put 0 in the beginning. */
-#define VERSION 2'00'02'00
-#define VERSION_STR "2.0.2.0"
+#define VERSION 2'00'02'01
+#define VERSION_STR "2.0.2.1"
 #define ERRMSG_NOT_ENOUGH_ARGS(x) "Incorrect " x " usage: not enough arguments.\nRun without parameters to see usage examples.\n"
 #define ERRMSG_FILE(x) "An error occurred when trying to read/write " << x << ".\n"
 
@@ -29,6 +29,9 @@ TODO
 - Proper exe name arguments system.
 - Rework pack entries to support them independantly
 
+2.0.2.1
+- "Fixed" -pa not taking .ini into account. Though it only works when you drop .ini on the splitter, not .tga. For .tga it tries to find .tga.ini.preload.
+
 2.0.2.0
 - Support for .ini (int .preload in text format from older games).
 - Corrected the middle&offsets calculations (AGAIN ._ .). Now should work correctly for episodes AND for CIU (2.0.1.4- only worked correctly with CIU).
@@ -37,6 +40,7 @@ TODO
 - --dbg-frame, --dbg-middle: now work for packing as well, for some reason.
 
 ! There is a small risk that the preload is recognised as a TGA and UVEPS will try to "extract" the frames from it if you let it decide what to do automatically.
+TL;DR: -pa is evil, -ps is op.
 
 2.0.1.4
 - Fixed alpha channel check for transparent blitting.
@@ -428,13 +432,13 @@ int ParseArgs(std::vector<Entry>& files, int& argc, char**& argv) {
 				Entry entry{ 0 };
 				if (gSearchForEntries) {
 					std::string path = argv[i];
-					if (path.rfind('.') != std::string::npos && path.substr(path.rfind('.')) == ".preload") {
+					if (path.rfind('.') != std::string::npos && path.substr(path.rfind('.')) == ".preload" || path.substr(path.rfind('.')) == ".ini") {
 						entry.preload = path;
-						entry.tga = path.substr(0, path.rfind(".") - 4);//X.tga.ini.preload
+						entry.tga = path.substr(0, path.rfind(".ini"));//X.tga.ini.preload
 					}
 					else {
 						entry.tga = path;
-						entry.preload = path + ".ini.preload";
+						entry.preload = path + ".ini.preload"; // Well, it can't automatically guess both .ini and .ini.preload with this system...
 					}
 				}
 				else {
