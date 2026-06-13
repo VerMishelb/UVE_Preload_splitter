@@ -17,6 +17,7 @@ struct TargaHeader {
 		image_descriptor{0};
 };
 
+// u8 ARGB
 struct PixelData {
 	unsigned char a{0}, r{ 0 }, g{ 0 }, b{ 0 };
 	bool operator!=(const PixelData& other) const;
@@ -31,12 +32,12 @@ public:
 	int Save(const std::string& path);
 	void SetHeader(const TargaHeader& header);
 	TargaHeader GetHeader() const;
-	void SetPixel(int x, int y, const PixelData& px, bool bottom_to_top = true);
+	bool SetPixel(int x, int y, const PixelData& px, bool bottom_to_top = true);
 	PixelData GetPixel(int x, int y, bool bottom_to_top = true) const;
 	//The resulting region is always upside down for consistence
 	std::vector<PixelData> GetRegion(int x, int y, int w, int h, bool bottom_to_top = true) const;
-	void BlitRegion(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top = true);
-	void BlitRegionTransparent(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top = true, uint8_t a_ = 255);//Do not place pixel if it's transparent
+	bool BlitRegion(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top = true);
+	bool BlitRegionTransparent(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top = true, uint8_t a_ = 255, bool show_transparency = false);//Do not place pixel if it's transparent
 	bool PixelIsTransparent(const PixelData& px, bool check_alpha_only = true);
 
 	std::vector<unsigned char> data{};

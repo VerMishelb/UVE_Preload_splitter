@@ -1,8 +1,13 @@
 #include <algorithm>
 #include <numeric>
+#include <cmath>
 #include "AtlasPack.h"
 #include "IniPreload.h"
 #include "Debug.h"
+
+const PixelData DebugColourFrame = { 255, 127, 127, 127 }; // 50% grey frame
+const PixelData DebugColourMiddleAbs = { 255, 255, 0, 0 }; // Red absolute middle
+const PixelData DebugColourOffset = { 255, 0, 0, 255 }; // Blue offset
 
 Atlas::Atlas() : pixel_padding_(0), use_power_of_two_(1), colour_padding_(2) {}
 
@@ -40,7 +45,7 @@ int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& ima
 	if (force_greyscale) {
 		tga_header.image_descriptor = 8;
 		tga_header.colour_depth = 8;
-		tga_header.image_type = 3;//Uncompressed greyscale
+		tga_header.image_type = 3; // Uncompressed greyscale
 	}
 	image.SetHeader(tga_header);
 
@@ -88,8 +93,100 @@ int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& ima
 		image.BlitRegionTransparent(
 			images[i].image.GetRegion(images[i].data_start.x, images[i].data_start.y, images[i].rect.w, images[i].rect.h, false),
 			images[i].rect.x, images[i].rect.y, images[i].rect.w, images[i].rect.h,
-			preload.IsFlipped()
+			preload.IsFlipped(), 255U, debug_show_transparency
 		);
+
+		int middle_x = static_cast<int>(std::ceil(static_cast<float>(images[i].rect.w - 1) / 2.f));
+		int middle_y = static_cast<int>(std::ceil(static_cast<float>(images[i].rect.h - 1) / 2.f));
+
+		if (debug_middle_point) {
+			// Middle point when the image is shifted an offset: the middle of the frame exported.
+			image.SetPixel(
+				images[i].rect.x + middle_x - images[i].offset.x,
+				images[i].rect.y + middle_y - images[i].offset.y,
+				DebugColourMiddleAbs, preload.IsFlipped());
+			// Middle point of the frame.
+			image.SetPixel(
+				images[i].rect.x + middle_x,
+				images[i].rect.y + middle_y,
+				DebugColourOffset, preload.IsFlipped());
+		}
+		if (debug_show_frame) {
+			// Frame top and bottom
+			for (int x = 0; x < images[i].rect.w; ++x) {
+				image.SetPixel(
+					images[i].rect.x + x,
+					images[i].rect.y,
+					(x != middle_x) ? DebugColourFrame : PixelData{ DebugColourFrame.a, uint8_t(DebugColourFrame.r * 0.7), uint8_t(DebugColourFrame.g * 0.7), uint8_t(DebugColourFrame.b * 0.7) },
+					preload.IsFlipped());
+				image.SetPixel(
+					images[i].rect.x + x,
+					images[i].rect.y + images[i].rect.h - 1,
+					(x != middle_x) ? DebugColourFrame : PixelData{ DebugColourFrame.a, uint8_t(DebugColourFrame.r * 0.7), uint8_t(DebugColourFrame.g * 0.7), uint8_t(DebugColourFrame.b * 0.7) },
+					preload.IsFlipped());
+			}
+			// Frame sides
+			for (int y = 0; y < images[i].rect.h; ++y) {
+				image.SetPixel(
+					images[i].rect.x,
+					images[i].rect.y + y,
+					(y != middle_y) ? DebugColourFrame : PixelData{ DebugColourFrame.a, uint8_t(DebugColourFrame.r * 0.7), uint8_t(DebugColourFrame.g * 0.7), uint8_t(DebugColourFrame.b * 0.7) },
+					preload.IsFlipped());
+				image.SetPixel(
+					images[i].rect.x + images[i].rect.w - 1,
+					images[i].rect.y + y,
+					(y != middle_y) ? DebugColourFrame : PixelData{ DebugColourFrame.a, uint8_t(DebugColourFrame.r * 0.7), uint8_t(DebugColourFrame.g * 0.7), uint8_t(DebugColourFrame.b * 0.7) },
+					preload.IsFlipped());
+			}
+			if (true) { // NOTE: Still thinking about whether this should be optional. -- mish 14.06.2026
+				// Colour padding frame top and bottom
+				for (int x = 0 - colour_padding_; x < images[i].rect.w + colour_padding_; ++x) {
+					image.SetPixel(
+						images[i].rect.x + x,
+						images[i].rect.y - colour_padding_,
+						PixelData{
+							DebugColourFrame.a,
+							uint8_t(DebugColourFrame.r * 1.25),
+							uint8_t(DebugColourFrame.g),
+							uint8_t(DebugColourFrame.b * 1.25)
+						}, // May overflow if the colour is different but who cares? Nobody seems to use this app anyway.
+						preload.IsFlipped());
+					image.SetPixel(
+						images[i].rect.x + x,
+						images[i].rect.y + images[i].rect.h - 1 + colour_padding_,
+						PixelData{
+							DebugColourFrame.a,
+							uint8_t(DebugColourFrame.r * 1.25),
+							uint8_t(DebugColourFrame.g),
+							uint8_t(DebugColourFrame.b * 1.25)
+						},
+						preload.IsFlipped());
+				}
+				// Colour padding frame sides
+				for (int y = 0 - colour_padding_; y < images[i].rect.h + colour_padding_; ++y) {
+					image.SetPixel(
+						images[i].rect.x - colour_padding_,
+						images[i].rect.y + y,
+						PixelData{
+							DebugColourFrame.a,
+							uint8_t(DebugColourFrame.r * 1.25),
+							uint8_t(DebugColourFrame.g),
+							uint8_t(DebugColourFrame.b * 1.25)
+						},
+						preload.IsFlipped());
+					image.SetPixel(
+						images[i].rect.x + images[i].rect.w - 1 + colour_padding_,
+						images[i].rect.y + y,
+						PixelData{
+							DebugColourFrame.a,
+							uint8_t(DebugColourFrame.r * 1.25),
+							uint8_t(DebugColourFrame.g),
+							uint8_t(DebugColourFrame.b * 1.25)
+						},
+						preload.IsFlipped());
+				}
+			}
+		}
 
 		PreloadFrameData frame{ 0 };
 		frame.x = images[i].rect.x;
@@ -130,7 +227,7 @@ int Atlas::SaveAtlas(const std::string& path, const std::vector<AtlasEntry>& ima
 	}
 	printf_s("Saving the atlas to %s\n", path.c_str());
 	image.Save(path);
-	preload.Save(path + ".ini.preload");
+	preload.Save(path + ((preload.format_version == IniPreload::VERSION_INI) ? ".ini" : ".ini.preload"));
 	return 0;
 }
 
@@ -174,7 +271,7 @@ int Atlas::CreateAtlas(std::vector<AtlasEntry>& images) {
 void Atlas::GetSizes(const std::vector<AtlasEntry>& images, std::vector<Vector2>& sizes) {
 	int total_padding = 0;
 	if (images[0].image.colour_depth == 32) {
-		total_padding = pixel_padding_ + colour_padding_ * 2;
+		total_padding = pixel_padding_ + colour_padding_ * 2; // x2 so the coloured paddings don't fight each other.
 	}
 	else {
 		total_padding = pixel_padding_ + colour_padding_;
@@ -223,9 +320,7 @@ void Atlas::GetSizes(const std::vector<AtlasEntry>& images, std::vector<Vector2>
 	}
 
 	if (max_h > MAX_ATLAS_SIZE) { max_h = MAX_ATLAS_SIZE; }
-
 	unsigned int no_power_of_two_start_width = images_area / max_h;
-	
 	DEBUG_PRINTVAL(use_power_of_two_, "%i");
 
 	for (unsigned int h = ((use_power_of_two_) ? 1 : min_h); h <= max_h;) {
@@ -246,10 +341,13 @@ void Atlas::GetSizes(const std::vector<AtlasEntry>& images, std::vector<Vector2>
 			Vector2 temp_vec{ static_cast<int>(w), static_cast<int>(h) };
 			sizes.push_back(temp_vec);
 		}
-		use_power_of_two_ ?
-			((h < 512) ? h <<= 1 :
-				(h == 512) ? h = 1016 : h += 508) :
-			(h += no_power_of_two_add_px);
+		use_power_of_two_ 
+			? ((h < 512) 
+				? h <<= 1 
+				: (h == 512) 
+					? h = 1016 
+					: h += 508) 
+			: (h += no_power_of_two_add_px);
 	}
 	if (sizes.empty()) { return; }
 
@@ -283,7 +381,7 @@ std::vector<int> Atlas::GetSortedIndices(const std::vector<AtlasEntry>& images) 
 	*/
 	std::iota(sorted_ids.begin(), sorted_ids.end(), 0);
 	std::sort(sorted_ids.begin(), sorted_ids.end(),
-		[&images](int i, int j) { return images[i].rect.h > images[j].image.h; }
+		[&images](int i, int j) { return images[i].rect.h > images[j].image.h; } // NOTE: Revise why we sort by height specifically -- mish 11.06.26
 	);
 	return sorted_ids;
 }
@@ -306,10 +404,7 @@ bool Atlas::PackAtlas(std::vector<AtlasEntry>& images, Vector2 size,
 		});
 
 	for (int image = 0; image < images.size(); ++image) {
-
-		if (free_rects_.empty()) {
-			return false;
-		}
+		if (free_rects_.empty()) { return false; }
 
 		int current_index = sorted_ids[image];
 		DEBUG_PRINTVAL(current_index, "%i");

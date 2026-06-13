@@ -63,6 +63,10 @@ public:
 	int pixel_padding_;
 	int colour_padding_;
 
+	bool debug_show_transparency = false;
+	bool debug_show_frame = false;
+	bool debug_middle_point = false;
+
 private:
 	bool IntersectsRect(const Rect& new_rect, const Rect& free_rect);
 	void PushSplitRects(const Rect& new_rect, const Rect free_rect);

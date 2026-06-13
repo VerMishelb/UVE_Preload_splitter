@@ -13,7 +13,7 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Russian (Russia) resources
+// Русский (Россия) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
 LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,0,1,4
- PRODUCTVERSION 2,0,1,4
+ FILEVERSION 2,0,2,0
+ PRODUCTVERSION 2,0,2,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -68,13 +68,13 @@ BEGIN
         BLOCK "041904b0"
         BEGIN
             VALUE "CompanyName", "VerMishelb"
-            VALUE "FileDescription", "An application for extracting and packing texture atlases from Ultra VGA Engine games."
-            VALUE "FileVersion", "2.0.1.4"
+            VALUE "FileDescription", "UVE Preload Splitter"
+            VALUE "FileVersion", "2.0.2.0"
             VALUE "InternalName", "UVE_Prel.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2022 VerMishelb"
+            VALUE "LegalCopyright", "Copyright (C) 2022-2026 VerMishelb"
             VALUE "OriginalFilename", "UVE_Preload_splitter.exe"
             VALUE "ProductName", "UVE Preload splitter"
-            VALUE "ProductVersion", "2.0.1.4"
+            VALUE "ProductVersion", "2.0.2.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -83,7 +83,7 @@ BEGIN
     END
 END
 
-#endif    // Russian (Russia) resources
+#endif    // Русский (Россия) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

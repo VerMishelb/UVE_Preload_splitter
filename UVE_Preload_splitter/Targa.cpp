@@ -9,6 +9,9 @@ and the remaining bit is a binary alpha value.
 The colour components are converted into single byte components
 by simply shifting each component up by 3 bits (multiply by 8).
 */
+
+const PixelData DebugColourTransparency = { 255 * 0.25, 255, 0, 255 }; // 25% pink fill
+
 Targa::Targa() :
 	x{ 0 }, y{ 0 }, w{ 0 }, h{ 0 },
 	image_type{ 0 }, colour_depth{ 0 }, image_descriptor{ 0 }
@@ -69,11 +72,11 @@ void Targa::SetHeader(const TargaHeader& header) {
 	data.resize(w * h * (colour_depth >> 3));
 }
 
-void Targa::SetPixel(int x, int y, const PixelData& px, bool bottom_to_top) {
+bool Targa::SetPixel(int x, int y, const PixelData& px, bool bottom_to_top) {
 	//int px_d = x + x*y;
 	int px_d = (bottom_to_top) ? x + w * y : x + w * (h-y-1);
-	if (px_d * colour_depth >> 3 > data.size()) {
-		printf_s("Error. Tried to put a pixel to\n%dx%d\nwhen the image is\n%dx%d.\n", x, y, w, h);
+	if (px_d * colour_depth >> 3 > data.size() || px_d < 0) {
+		return false;
 	}
 	switch (colour_depth) {
 		case 32:	
@@ -93,6 +96,7 @@ void Targa::SetPixel(int x, int y, const PixelData& px, bool bottom_to_top) {
 		default:
 			break;
 	};
+	return true;
 }
 
 PixelData Targa::GetPixel(int x, int y, bool bottom_to_top) const {
@@ -137,7 +141,7 @@ std::vector<PixelData> Targa::GetRegion(int x, int y, int w, int h, bool bottom_
 	return res;
 }
 
-void Targa::BlitRegion(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top) {
+bool Targa::BlitRegion(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top) {
 	int
 		x_from = x,
 		x_to = x_from + w,//+1
@@ -146,36 +150,42 @@ void Targa::BlitRegion(const std::vector<PixelData>& _data, int x, int y, int w,
 
 	for (int _y = y_from; _y != y_to; (bottom_to_top ? ++_y : --_y)) {
 		for (int _x = x_from; _x < x_to; ++_x) {
-			SetPixel(_x, _y, _data[(_x - x_from) + std::abs(_y - y_from) * w], true);
+			if (!SetPixel(_x, _y, _data[(_x - x_from) + std::abs(_y - y_from) * w], true)) { return false; }
 		}
 	}
 }
 
-void Targa::BlitRegionTransparent(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top, uint8_t a_) {
-	int
-		x_from = x,
+bool Targa::BlitRegionTransparent(const std::vector<PixelData>& _data, int x, int y, int w, int h, bool bottom_to_top, uint8_t a_, bool show_transparency) {
+	int x_from = x,
 		x_to = x_from + w,//+1
 		y_from = bottom_to_top ? y : this->h - y - 1,
 		y_to = bottom_to_top ? y_from + h : y_from - h;//+-1
 
 	for (int _y = y_from; _y != y_to; (bottom_to_top ? ++_y : --_y)) {
 		for (int _x = x_from; _x < x_to; ++_x) {
-			if (!PixelIsTransparent(_data[(_x - x_from) + std::abs(_y - y_from) * w]))
-			SetPixel(_x, _y, 
-				{ 
-					(a_ == 255) ? _data[(_x - x_from) + std::abs(_y - y_from) * w].a : a_,
-					_data[(_x - x_from) + std::abs(_y - y_from) * w].r,
-					_data[(_x - x_from) + std::abs(_y - y_from) * w].g,
-					_data[(_x - x_from) + std::abs(_y - y_from) * w].b,
-				}, true);
+			if (!PixelIsTransparent(_data[(_x - x_from) + std::abs(_y - y_from) * w])) {
+				bool result = SetPixel(_x, _y,
+					{
+						(a_ == 255) ? _data[(_x - x_from) + std::abs(_y - y_from) * w].a : a_,
+						_data[(_x - x_from) + std::abs(_y - y_from) * w].r,
+						_data[(_x - x_from) + std::abs(_y - y_from) * w].g,
+						_data[(_x - x_from) + std::abs(_y - y_from) * w].b,
+					}, true);
+				if (!result) return false;
+			}
+			else if (show_transparency) {
+				if (!SetPixel(_x, _y, DebugColourTransparency)) { return false; }
+			}
 		}
 	}
+	return true;
 }
 
 bool Targa::PixelIsTransparent(const PixelData& px, bool alpha_only) {
 	switch (colour_depth) {
 	case 32:
-		if (alpha_only) return (!px.a);
+		if (alpha_only)
+			return (!px.a);
 		else return (px == PixelData{ 0,0,0,0 });
 		break;
 	case 24:
